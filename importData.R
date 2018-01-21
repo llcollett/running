@@ -93,7 +93,7 @@ runlist<-lapply(seq_along(runlist),
 )
 #main dataset
 maf<-do.call("rbind",runlist)
-maf<-subset(maf,maf$minhrri==1 | maf$minpacei==1)
+maf<-subset(maf,maf$minhrri==1 & maf$minpacei==1)
 maf<-maf[c("date","secs","km","hr","slope","pace",
            "con_hr","con_slope","max_km")]
 maf<-maf[order(maf$date,maf$secs),]

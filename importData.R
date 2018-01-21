@@ -1,16 +1,10 @@
-#MAF visualisation
+#packages
 library(tidyverse)
-library(lubridate)
-library(chron)
-library(hms)
-library(lme4)
-library(dplyr)
-library(plyr)
 
 #working directory
 setwd("C:/Users/LauraAcer/Documents/Data Science/MAF")
 
-#initial data frames
+#read in data
 aug16<-read_csv("2017_08_16_08_21_42.csv")
 aug16$date<-as.Date("2017_08_16","%Y_%m_%d")
 aug17<-read_csv("2017_08_17_08_42_56.csv")
@@ -36,43 +30,73 @@ sep16$date<-as.Date("2017_09_16","%Y_%m_%d")
 sep17<-read_csv("2017_09_17_17_35_00.csv")
 sep17$date<-as.Date("2017_09_17","%Y_%m_%d")
 
-#manipulations on all data frames
-df<-rbind(aug16,aug17,aug18,aug22,aug24,aug26,aug28,aug30,
-          sep13,sep15,sep16,sep17)
-df<-df[c("date","secs","km","hr","slope")]
-df$mins<-df$secs/60
-df$pace<-df$secs/df$km
-df$consthr<-ave(df$hr,df$date)
-df$constslope<-ave(df$slope,df$date)
-df$maxkm<-ave(df$km,df$date,FUN=max)
-#sort and save edited data
-edf<-df[order(df$date,df$secs),]
+#create list of all data
+runlist<-list(aug16,aug17,aug18,aug22,aug24,aug26,aug28,aug30,
+             sep13,sep15,sep16,sep17)
+runlist<-lapply(runlist,"[",
+               c("date","secs","km","hr","slope"))
+runlist<-lapply(seq_along(runlist),
+               function(i){
+                 runlist[[i]]$pace<-runlist[[i]]$secs/runlist[[i]]$km
+                 runlist[[i]]$con_hr<-mean(runlist[[i]]$hr)
+                 runlist[[i]]$con_slope<-mean(runlist[[i]]$slope)
+                 runlist[[i]]$max_km<-max(runlist[[i]]$km)
+                 return(runlist[[i]])
+               }
+)
 
-edf<-subset(edf,edf$secs>300)
-#visualise data
-ggplot(data=edf,aes(x=km,y=pace,group=date,colour=factor(date)))+
-  geom_line(size=1.5)+scale_colour_brewer(palette="Greens","Date")
-#save unedited dataframe
-save(edf,file="mafRunsUnedited.Rda")
+#visualise individually
+ggplot(data=runlist[[1]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[1]],aes(x=secs,y=hr))+geom_line()
+ggplot(data=runlist[[2]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[2]],aes(x=secs,y=hr))+geom_line()
+ggplot(data=runlist[[3]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[3]],aes(x=secs,y=hr))+geom_line()
+ggplot(data=runlist[[4]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[4]],aes(x=secs,y=hr))+geom_line()
+ggplot(data=runlist[[5]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[5]],aes(x=secs,y=hr))+geom_line()
+ggplot(data=runlist[[6]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[6]],aes(x=secs,y=hr))+geom_line()
+ggplot(data=runlist[[7]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[7]],aes(x=secs,y=hr))+geom_line()
+ggplot(data=runlist[[8]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[8]],aes(x=secs,y=hr))+geom_line()
+ggplot(data=runlist[[9]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[9]],aes(x=secs,y=hr))+geom_line()
+ggplot(data=runlist[[10]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[10]],aes(x=secs,y=hr))+geom_line()
+ggplot(data=runlist[[11]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[11]],aes(x=secs,y=hr))+geom_line()
+ggplot(data=runlist[[12]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[12]],aes(x=secs,y=hr))+geom_line()
+#see there is not consistency in the shape
+#need to remove warm up where one occurred
+#can be fairly systematic
+#add systematic rule:
+#fastest pace onwards
+#bottom of heart rate range
+#whichever is earliest
 
+#apply rule
+runlist<-lapply(seq_along(runlist),
+                function(i){
+                  runlist[[i]]$minpace<-match(min(runlist[[i]]$pace),
+                                              runlist[[i]]$pace)
+                  runlist[[i]]$minhrr<-match(143,floor(runlist[[i]]$hr))
+                  runlist[[i]]$minpacei<-ifelse(
+                    runlist[[i]]$secs>=runlist[[i]]$minpace,1,0)
+                  runlist[[i]]$minhrri<-ifelse(
+                    runlist[[i]]$secs>=runlist[[i]]$minhrr,1,0)
+                  return(runlist[[i]])
+                }
+)
+#main dataset
+maf<-do.call("rbind",runlist)
+maf<-subset(maf,maf$minhrri==1 | maf$minpacei==1)
+maf<-maf[c("date","secs","km","hr","slope","pace",
+           "con_hr","con_slope","max_km")]
+maf<-maf[order(maf$date,maf$secs),]
 
-#start all runs at the time when MAF heartrate is attained
-#i.e. formal start to the MAF run
-fdf<-subset(edf,((date==as.Date("2017-08-16") & edf$secs>405) | 
-                   (date==as.Date("2017-08-17") & edf$secs>435) |
-                   (date==as.Date("2017-08-18") & edf$secs>600) |
-                   (date==as.Date("2017-08-22") & secs>600 & secs<1600) |
-                   (date==as.Date("2017-08-24") & secs>600) |
-                   (date==as.Date("2017-08-26") & secs>720) |
-                   (date==as.Date("2017-08-28") & secs>600) |
-                   (date==as.Date("2017-08-30") & secs>720) |
-                   (date==as.Date("2017-09-13") & secs>300 & secs<2360) |
-                   (date==as.Date("2017-09-15") & secs>600) |
-                   (date==as.Date("2017-09-16") & secs>600) |
-                   (date== as.Date("2017-09-17") & secs>600)) & 
-              abs(edf$slope<5))
-#visualise edited data
-ggplot(data=fdf,aes(x=km,y=pace,group=date,colour=factor(date)))+
-  geom_line(size=1.5)+scale_colour_brewer(palette="Greens","Date")
-
-save(fdf,file="mafRuns.Rda")
+#save
+save(maf,file="mafRuns.Rda")

@@ -13,7 +13,7 @@ load("mafRuns.Rda")
 maf<-transform(maf,id=as.numeric(factor(date)))
 ids<-c(1:max(maf$id))
 ids<-as.data.frame(ids)
-indexes=sample(1:nrow(ids),size=0.4*nrow(ids))
+indexes<-sample(1:nrow(ids),size=0.4*nrow(ids))
 id<-ids[indexes,]
 maf_test<-as.data.frame(id)
 maf_test<-merge(maf,maf_test,by="id")

@@ -1,8 +1,10 @@
 #packages
 library(tidyverse)
+library(lubridate)
 
 #working directory
-setwd("C:/Users/LauraAcer/Documents/Data Science/MAF")
+#setwd("C:/Users/LauraAcer/Documents/Data Science/MAF")
+setwd("O:/Documents/Personal/Projects/Data Science/Drive/MAF")
 
 #read in data
 aug16<-read_csv("2017_08_16_08_21_42.csv")
@@ -38,6 +40,7 @@ runlist<-lapply(runlist,"[",
 runlist<-lapply(seq_along(runlist),
                function(i){
                  runlist[[i]]$pace<-runlist[[i]]$secs/runlist[[i]]$km
+                 runlist[[i]]$mean_pace<-mean(runlist[[i]]$pace)
                  runlist[[i]]$con_hr<-mean(runlist[[i]]$hr)
                  runlist[[i]]$con_slope<-mean(runlist[[i]]$slope)
                  runlist[[i]]$max_km<-max(runlist[[i]]$km)
@@ -74,28 +77,49 @@ ggplot(data=runlist[[12]],aes(x=secs,y=hr))+geom_line()
 #need to remove warm up where one occurred
 #can be fairly systematic
 #add systematic rule:
-#fastest pace onwards
+#remove first 5 minutes
+#fastest pace onwards from there
 #bottom of heart rate range
 #whichever is earliest
 
 #apply rule
 runlist<-lapply(seq_along(runlist),
                 function(i){
-                  runlist[[i]]$minpace<-match(min(runlist[[i]]$pace),
-                                              runlist[[i]]$pace)
-                  runlist[[i]]$minhrr<-match(143,floor(runlist[[i]]$hr))
+                  runlist[[i]]<-subset(runlist[[i]],runlist[[i]]$secs>300)
+                  runlist[[i]]$minpace<-match(min(runlist[[i]]$pace),runlist[[i]]$pace)
+                  runlist[[i]]$minhrr<-ifelse(min(runlist[[i]]$hr)<=143,
+                                              match(143,floor(runlist[[i]]$hr)),
+                                              ifelse(min(runlist[[i]]$hr)<=144,match(144,floor(runlist[[i]]$hr)),
+                                                     ifelse(min(runlist[[i]]$hr)<=145,match(145,floor(runlist[[i]]$hr)),
+                                                            match(146,floor(runlist[[i]]$hr)))))
                   runlist[[i]]$minpacei<-ifelse(
                     runlist[[i]]$secs>=runlist[[i]]$minpace,1,0)
                   runlist[[i]]$minhrri<-ifelse(
                     runlist[[i]]$secs>=runlist[[i]]$minhrr,1,0)
+                  runlist[[i]]<-subset(runlist[[i]],runlist[[i]]$minhrri==1 & runlist[[i]]$minpacei)
                   return(runlist[[i]])
                 }
 )
+
+#visualise individually
+ggplot(data=runlist[[1]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[2]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[3]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[4]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[5]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[6]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[7]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[8]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[9]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[10]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[11]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+ggplot(data=runlist[[12]],aes(x=secs,y=pace))+geom_line()+scale_y_time()
+#these are much better
+
 #main dataset
 maf<-do.call("rbind",runlist)
-maf<-subset(maf,maf$minhrri==1 & maf$minpacei==1)
 maf<-maf[c("date","secs","km","hr","slope","pace",
-           "con_hr","con_slope","max_km")]
+           "con_hr","con_slope","max_km","mean_pace")]
 maf<-maf[order(maf$date,maf$secs),]
 
 #save
